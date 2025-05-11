@@ -80,6 +80,8 @@ private:
   bool need_wmma_h_{false};
   // The size of the barrier array in shared memory
   int barrier_count_ = -1;
+  // whether enable fp8
+  bool enable_fp8_{false};
   // whether need mma.h
   bool need_mma_h_{false};
   // whether need cast_smem_ptr_to_int helper function

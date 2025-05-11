@@ -23,6 +23,34 @@
 namespace tvm {
 namespace codegen {
 
+static std::string GetFP8Type(DataType type) {
+  std::stringstream stream;
+  int32_t lanes = type.lanes();
+  std::string vec;
+  if (type.is_scalar()) {
+    vec = "";
+  } else if (lanes == 2) {
+    vec = "_2";
+  } else if (lanes == 4) {
+    vec = "_4";
+  } else if (lanes == 8) {
+    vec = "_8";
+  } else if (lanes == 16) {
+    vec = "_16";
+  } else {
+    LOG(FATAL) << "Only support scalar and vector types of width (2, 4, 8, 16) "
+                  "for FP8";
+  }
+  if (type.code() == DataType::kFloat8_e4m3fn) {
+    stream << "fp8_e4" << vec << "_t";
+  } else if (type.code() == DataType::kFloat8_e5m2) {
+    stream << "fp8_e5" << vec << "_t";
+  } else {
+    LOG(FATAL) << "Unsupported FP8 type in CUDA codegen";
+  }
+  return stream.str();
+}
+
 /*!
  * \brief Replace patterns with replacement strings.
  * \note should use std::format instead when codebase is ported to C++20.
@@ -106,6 +134,9 @@ std::string CodeGenTileLangHIP::Finish() {
   decl_stream << "#include <hip/hip_runtime.h>\n";
   if (need_mma_h_) {
     decl_stream << "#include <mma.h>\n";
+  }
+  if (enable_fp8_) {
+    decl_stream << "#include <tl_templates/hip/hip_fp8.h>\n";
   }
   decl_stream << "#include <tl_templates/hip/gemm.h>\n";
   decl_stream << "#include <tl_templates/hip/copy.h>\n";
@@ -229,18 +260,9 @@ void CodeGenTileLangHIP::PrintType(DataType t, std::ostream &os) { // NOLINT(*)
     if (!fail)
       return;
   } else if (t.is_float8()) {
-    if (t.is_scalar()) {
-      os << "unsigned char"; // __nv_fp8_storage_t is an alias of unsigned char
-    } else if (lanes == 2) {
-      os << "unsigned short int"; // __nv_fp8x2_storage_t is an alias of
-                                  // unsigned short
-    } else if (lanes == 4) {
-      os << "unsigned int"; // __nv_fp8x4_storage_t is an alias of unsigned int
-    } else {
-      fail = true;
-    }
-    if (!fail)
-      return;
+    enable_fp8_ = true;
+    os << GetFP8Type(t);
+    return;
   } else if (t == DataType::Bool()) {
     os << "bool";
     return;
