@@ -41,6 +41,32 @@ template <> struct MfmaTraits<__hip_bfloat16> {
   }
 };
 
+// #ifdef __gfx942__
+// Specialization for __hip_fp8_e4m3_fnuz
+// TODO: where is tile size determined?
+template <> struct MfmaTraits<fp8_e4_t> {
+  template <typename AccType>
+  static TL_DEVICE void mfma_op(const fp8_e4_t *b,
+                                const fp8_e4_t *a, AccType *c) {
+    *c = __builtin_amdgcn_mfma_f32_16x16x32_fp8_fp8(
+        reinterpret_cast<const long*>(b)[0],
+        reinterpret_cast<const long*>(a)[0],
+        *c, 0, 0, 0);
+  }
+};
+
+template <> struct MfmaTraits<fp8_e5_t> {
+  template <typename AccType>
+  static TL_DEVICE void mfma_op(const fp8_e5_t *b,
+                                const fp8_e5_t *a, AccType *c) {
+    *c = __builtin_amdgcn_mfma_f32_16x16x32_bf8_bf8(
+        reinterpret_cast<const long*>(b)[0],
+        reinterpret_cast<const long*>(a)[0],
+        *c, 0, 0, 0);
+  }
+};
+// #endif
+
 // ref to bitblas/tl/mfma_macro_generator.py::kPack
 template <int M, int N, int K, int num_warp_m, int num_warp_n, bool TransposeA,
           bool TransposeB, bool clear_accum, int kPack, typename A_type,
@@ -51,7 +77,8 @@ public:
 
   static constexpr int micro_size_x = 16;
   static constexpr int micro_size_y = 16;
-  static constexpr int micro_size_k = 16;
+  // static constexpr int micro_size_k = 16;  // TODO: change this
+  static constexpr int micro_size_k = 32;  // TODO: change this
 
   // This part comes from the Codegen
   static constexpr int M_Tile = M;

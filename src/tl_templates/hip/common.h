@@ -5,6 +5,9 @@
 #include <ck_tile/core.hpp>
 #include <hip/hip_bf16.h>
 #include <hip/hip_fp16.h>
+#ifdef __gfx942__  // CDNA3
+#include "hip_fp8.h"
+#endif
 #include <hip/hip_runtime.h>
 #include <rocwmma/rocwmma.hpp>
 
